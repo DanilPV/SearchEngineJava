@@ -1,0 +1,34 @@
+version: '3.5'
+services:
+    mysql_serv:
+        image: mysql:8.0  
+        container_name: mysql_java_finish
+        ports:
+            - "8003:3306"
+        networks:
+            - localServer
+        volumes:
+            - D:\Docker\Compose\ServerNginsSqlPhpMyadmin\Volumes\mysql:/var/lib/mysql
+        environment:
+            MYSQL_ROOT_PASSWORD: password
+
+
+    pma_local:
+        image: phpmyadmin/phpmyadmin
+        container_name: pma_java_finish
+        restart: always
+        links:
+            - mysql_serv
+        ports:
+            - 8001:80
+        networks:
+            - localServer
+        environment:
+            PMA_HOST: mysql_serv
+            MYSQL_USERNAME: root
+            MYSQL_ROOT_PASSWORD: password
+            
+networks:
+        localServer:
+           name: localServer
+           driver: bridge
