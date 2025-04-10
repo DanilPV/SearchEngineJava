@@ -60,24 +60,24 @@ public class SearchServiceIml implements SearchService {
 
             TreeMap<String, Integer> queryLemmas = lemmaService.extractLemmasFromString(query);
 
-            // Фильтруем леммы - убираем слишком частые
+
             List<Lemma> filteredLemmas = filterCommonLemmas(queryLemmas, site);
 
             if (filteredLemmas.isEmpty()) {
                 throw new RestException(false, "Ничего не найдено", HttpStatus.OK);
             }
 
-            // Сортируем леммы по частоте (от редких к частым)
+
             filteredLemmas.sort(Comparator.comparingInt(Lemma::getFrequency));
 
-            // Поиск страниц, содержащих все леммы
+
             List<Page> foundPages = findPagesContainingAllLemmas(filteredLemmas);
 
             if (foundPages.isEmpty()) {
                 throw new RestException(false, "Нет страниц содержащих все слова", HttpStatus.OK);
             }
 
-            // Рассчитываем релевантность для каждой страницы
+
             Map<Page, Double> pageRelevanceMap = calculateRelevance(foundPages, filteredLemmas);
 
             // Сортируем страницы по релевантности
@@ -86,7 +86,7 @@ public class SearchServiceIml implements SearchService {
                     .map(Map.Entry::getKey)
                     .collect(Collectors.toList());
 
-            // Формируем результат с учетом offset и limit
+
             List<SearchData> data = prepareSearchResults(
                     sortedPages, pageRelevanceMap, query, offset, limit);
 
@@ -117,7 +117,7 @@ public class SearchServiceIml implements SearchService {
         double exclusionThreshold = 0.8; // Исключаем леммы, встречающиеся на 80%+ страниц
 
 
-        List<Site> sites = new ArrayList<>(); // Список сайтов для фильтрации лемм, встречающихся на 80%+ страниц
+        List<Site> sites = new ArrayList<>();
 
         if (site != null) {
             sites.add(site);
@@ -145,7 +145,7 @@ public class SearchServiceIml implements SearchService {
     private List<Page> findPagesContainingAllLemmas(List<Lemma> lemmas) {
         if (lemmas.isEmpty()) return Collections.emptyList();
 
-        // Начинаем с первой (самой редкой) леммы
+
         Lemma firstLemma = lemmas.get(0);
         Set<Page> resultPages = new HashSet<>(pageService.findPagesByLemma(firstLemma));
 
@@ -215,11 +215,11 @@ public class SearchServiceIml implements SearchService {
 
 
     private String generateSnippet(Page page, String query) {
-        // Реализация генерации сниппета
+
         String content = page.getContent();
         String[] queryWords = query.toLowerCase().split("\\s+");
 
-        // Находим позиции всех слов запроса в контенте
+
         List<Integer> positions = new ArrayList<>();
         for (String word : queryWords) {
             int pos = content.toLowerCase().indexOf(word);
@@ -230,7 +230,7 @@ public class SearchServiceIml implements SearchService {
         }
 
         if (positions.isEmpty()) {
-            return "";  // Если ни одного вхождения не найдено
+            return "";
         }
 
         // Выбираем область вокруг первого вхождения
