@@ -38,7 +38,7 @@
    ```bash
    git clone https://github.com/DanilPV/SearchEngineJava.git
    cd search-engine
-   ``
+   
 2. Настройте базу данных в application.yaml:
 
    ``` spring:
@@ -46,17 +46,17 @@
         username: root
         password: password
         url: jdbc:mysql://localhost:8003/search_engine?useSSL=false&requireSSL=false&allowPublicKeyRetrieval=true
-``
+
 3. Соберите проект
-```
-mvn clean install
-```  
+   ```
+   mvn clean install
+   ```  
     
  4. Запустите приложение:
 
-````
-java -jar target/SearchEngine-1.0-SNAPSHOT.jar
-````
+   ````
+   java -jar target/SearchEngine-1.0-SNAPSHOT.jar
+   ````
 
 ## 📌 API Endpoints
 
