@@ -18,4 +18,6 @@ public interface LemmaRepository  extends JpaRepository<Lemma, Integer> {
     Lemma findByLemmaAndSite(@Param("lemma") String lemma, @Param("site") Site site);
 
     List<Lemma> findAllLemmaBySite(Optional<Site> byUrl);
+
+    boolean existsBySiteUrl(String url);
 }

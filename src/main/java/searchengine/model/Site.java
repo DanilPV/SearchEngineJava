@@ -1,9 +1,15 @@
 package searchengine.model;
 
+
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+
+
+import org.hibernate.annotations.JdbcType;
+import org.hibernate.annotations.Type;
+import org.hibernate.dialect.PostgreSQLEnumJdbcType;
 import org.springframework.stereotype.Component;
 import searchengine.enums.STATUS;
 import java.time.LocalDateTime;
@@ -11,11 +17,12 @@ import java.util.List;
 import java.util.Objects;
 
 
-@Component
+
 @Entity
 @Setter
 @Getter
 @Table(name = "site")
+
 public class Site implements Comparable<Site> {
 
     @Id
@@ -23,9 +30,6 @@ public class Site implements Comparable<Site> {
     private Integer id;
 
     @Enumerated(EnumType.STRING)
-
-
-    @Column(name = "status")
     private STATUS status;
 
     @CreationTimestamp
@@ -44,11 +48,11 @@ public class Site implements Comparable<Site> {
     @OneToMany(mappedBy = "site", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Page> pages;
 
-    @Transient
-    private boolean scanLemmas;
+//    @Transient
+//    private boolean scanLemmas;
 
-    @Transient
-    private String mainURL;
+   // @Transient
+   // private String mainURL;
 
 
     @Override
@@ -80,8 +84,11 @@ public class Site implements Comparable<Site> {
                 ", url='" + url + '\'' +
                 ", name='" + name + '\'' +
                 ", pages=" + pages +
-                ", scanLemmas=" + scanLemmas +
-                ", mainURL='" + mainURL + '\'' +
+               // ", scanLemmas=" + scanLemmas +
+               // ", mainURL='" + mainURL + '\'' +
                 '}';
     }
+
+
 }
+

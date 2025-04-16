@@ -1,4 +1,4 @@
-package searchengine.classesError;
+package searchengine.exception;
 
 import lombok.Getter;
 import org.springframework.http.HttpStatus;

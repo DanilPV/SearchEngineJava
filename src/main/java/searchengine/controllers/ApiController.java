@@ -1,56 +1,48 @@
 package searchengine.controllers;
 
-import org.springframework.http.ResponseEntity;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
-import searchengine.dto.indexPage.IndexPageResponce;
 import searchengine.dto.search.SearchResponse;
 import searchengine.dto.startIndexing.StartIndexingResponce;
 import searchengine.dto.statistics.StatisticsResponse;
 import searchengine.dto.stopIndexing.StopIndexingResponce;
-import searchengine.servicesInterface.IndexPageService;
-import searchengine.servicesInterface.SearchService;
-import searchengine.servicesInterface.StartStopIndexingSevice;
-import searchengine.servicesInterface.StatisticsService;
+import searchengine.services.SearchService;
+import searchengine.services.IndexingService;
+import searchengine.services.StatisticsService;
 
 @RestController
 @RequestMapping("/api")
+@RequiredArgsConstructor
 public class ApiController {
 
     private final StatisticsService statisticsService;
-    private StartStopIndexingSevice startStopIndexingSevice;
-    private IndexPageService indexPageService;
-    private SearchService searchService;
+    private final IndexingService startStopIndexingService;
+    private final SearchService searchService;
 
-    public ApiController(StatisticsService statisticsService, StartStopIndexingSevice startStopIndexingSevice, IndexPageService indexPageService, SearchService searchService)   {
 
-        this.statisticsService = statisticsService;
-        this.startStopIndexingSevice = startStopIndexingSevice;
-        this.indexPageService = indexPageService;
-        this.searchService = searchService;
-
-    }
 
 
     @GetMapping("/statistics")
-    public ResponseEntity<StatisticsResponse> statistics() {
-        return ResponseEntity.ok(statisticsService.getStatistics());
+    public StatisticsResponse  statistics() {
+        return statisticsService.getStatistics();
     }
 
     @GetMapping("/startIndexing")
     public StartIndexingResponce startIndexing() {
-        return  startStopIndexingSevice.startIndexing();
+        return  startStopIndexingService.preIndexing(null);
     }
+    @PostMapping("/indexPage")
+    public StartIndexingResponce indexPage(@RequestBody String url)   {
+       // return  indexPageService.indexPage(url) ;
+        return  startStopIndexingService.preIndexing(url);
+    }
+
 
     @GetMapping("/stopIndexing")
     public StopIndexingResponce stopIndexing() {
-        return startStopIndexingSevice.stopIndexing();
+        return startStopIndexingService.stopIndexing();
     }
 
-
-    @PostMapping("/indexPage")
-    public IndexPageResponce indexPage(@RequestBody String url)   {
-        return  indexPageService.indexPage(url) ;
-    }
 
     @GetMapping("/search{query}{site}{offset}{limit}")
     public SearchResponse search (

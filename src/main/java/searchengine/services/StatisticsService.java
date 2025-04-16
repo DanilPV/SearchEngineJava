@@ -13,14 +13,15 @@ import searchengine.model.Site;
 import searchengine.repository.LemmaRepository;
 import searchengine.repository.PageRepository;
 import searchengine.repository.SiteRepository;
-import searchengine.servicesInterface.StatisticsService;
+
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-public class StatisticsServiceImpl implements StatisticsService {
+public class StatisticsService {
 
 
     private final SitesListConfig sites;
@@ -30,7 +31,7 @@ public class StatisticsServiceImpl implements StatisticsService {
     private LemmaRepository lemmaRepository;
     @Autowired
     private SiteRepository siteRepository;
-    @Override
+
     public StatisticsResponse getStatistics() {
 
 
@@ -48,31 +49,47 @@ public class StatisticsServiceImpl implements StatisticsService {
             item.setName(site.getName());
             item.setUrl(site.getUrl());
 
-            int pages = pageRepository.findAllPageBySite(
-                    siteRepository.findByUrl(
-                            site.getUrl()
-                    ).get()
-            ).size();
+            int pages = 0;
+            if ( pageRepository.existsBySiteUrl(site.getUrl()) ){
+                pages = pageRepository.findAllPageBySite(
+                        siteRepository.findByUrl(
+                                site.getUrl()
+                        ).get()
+                ).size();
+            }
 
-            int lemmas = lemmaRepository.findAllLemmaBySite(
+            int lemmas = 0;
+            if ( lemmaRepository.existsBySiteUrl(site.getUrl()) ){
+                lemmas = lemmaRepository.findAllLemmaBySite(
                     siteRepository.findByUrl(
                             site.getUrl()
                     )
             ).size();
+            }
+
 
             item.setPages(pages);
             item.setLemmas(lemmas);
-
-            Site siteQuery = siteRepository.findByUrl(site.getUrl()).get();
-
-            item.setStatus(siteQuery.getStatus().toString());
-            item.setError(siteQuery.getLastError() ==  null ? "" : siteQuery.getLastError());
-
             ZoneId zoneId = ZoneId.systemDefault();
-            long time = siteQuery.getStatusTime().atZone(zoneId).toEpochSecond() * 1000;
+            long time;
+
+            if (siteRepository.existsByUrl( site.getUrl() ) ) {
+
+                Site siteQuery = siteRepository.findByUrl(site.getUrl()).get();
+                item.setStatus(siteQuery.getStatus().toString());
+                item.setError(siteQuery.getLastError());
+
+
+                time = siteQuery.getStatusTime().atZone(zoneId).toEpochSecond() * 1000;
+                item.setStatusTime( time);
+
+            } else {
+                item.setStatus("NOT_INDEXED");
+                item.setError("NOT_INDEXED");
+                time = LocalDateTime.now().atZone(zoneId).toEpochSecond() * 1000;
+            }
 
             item.setStatusTime( time);
-
             total.setPages(total.getPages() + pages);
             total.setLemmas(total.getLemmas() + lemmas);
             detailed.add(item);

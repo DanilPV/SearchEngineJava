@@ -13,20 +13,20 @@ import java.util.List;
 @Repository
 public interface PageRepository  extends JpaRepository<Page, Integer> {
 
-    // Метод для проверки существования сайта по названию
     boolean existsByPath(String path);
 
-    // Найти страницу по path (учитывая, что path уникален)
     Page findByPath(String path);
 
     List<Page> findAll();
 
     boolean existsBySite(Site siteUrl);
+    
     Collection<Object> findBySite(Site siteUrl);
-
 
     @Query("SELECT l.page FROM Index l WHERE l.lemma = :lemma ")
     List<Page> findAllPageByLemma(@Param("lemma") Lemma lemma);
 
     List<Page> findAllPageBySite(Site  byUrl);
+
+    boolean existsBySiteUrl(String url);
 }

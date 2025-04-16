@@ -1,29 +1,34 @@
-package searchengine.serviceRepositoryes;
+package searchengine.function;
+
 
 import org.apache.lucene.morphology.LuceneMorphology;
 import org.apache.lucene.morphology.russian.RussianLuceneMorphology;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import searchengine.SpringContext.SpringContext;
-import searchengine.function.Functions;
+import org.springframework.transaction.annotation.Transactional;
 import searchengine.model.Index;
 import searchengine.model.Lemma;
 import searchengine.model.Page;
 import searchengine.model.Site;
+import searchengine.repository.IndexRepository;
 import searchengine.repository.LemmaRepository;
+
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 @Service
 public class LemmaService {
 
     @Autowired
     private LemmaRepository lemmaRepository;
-
+    @Autowired
+    private IndexRepository indexRepository;
 
     private static ConcurrentHashMap<String, Lemma> addLemmas = new ConcurrentHashMap<>();
+    public static ConcurrentHashMap<String, Index> allIndex = new ConcurrentHashMap<>();
 
     public void addAllLemma(TreeMap<String, Integer> lemaList, Page page) {
 
@@ -63,7 +68,8 @@ public class LemmaService {
                 index.setPage(page);
                 index.setRank(frequency);
                 index.setLemma(addLemmas.get(key));
-                IndexService.allIndex.put(index.getPage().getPath() + index.getLemma().getLemma(), index);
+
+                allIndex.put(index.getPage().getPath() + index.getLemma().getLemma(), index);
             });
 
         } catch (Exception e) {
@@ -75,15 +81,12 @@ public class LemmaService {
 
     public void saveAllLemmaSite(Site site) {
 
-
-        // 1. Подготовка данных для сохранения
         List<Lemma> lemmasToSave = addLemmas.values().stream()
                 .filter(lemma -> lemma.getSite().equals(site))
                 .collect(Collectors.toList());
 
-        // 2. Параллельное сохранение с использованием ForkJoinPool
-        int batchSize = 1500;  // Размер батча
-        List<List<Lemma>> batches = Functions.partitionList(lemmasToSave, batchSize);
+        int batchSize = 1500;
+        List<List<Lemma>> batches = partitionList(lemmasToSave, batchSize);
 
         ForkJoinPool customThreadPool = new ForkJoinPool(Runtime.getRuntime().availableProcessors());
 
@@ -110,8 +113,8 @@ public class LemmaService {
         System.out.println("Леммы сайта " + site.getName() + " сохранены");
 
         if (!batches.isEmpty()) {
-            IndexService myIndexService = SpringContext.getBean(IndexService.class);
-            myIndexService.saveAllIndexSite(site);
+
+            saveAllIndexSite(site);
         }
 
 
@@ -185,4 +188,50 @@ public class LemmaService {
     }
 
 
+    @Transactional
+    public void saveAllIndexSite(Site site) {
+
+        try {
+
+            List<Index> indexesToSave = allIndex.values().stream()
+                    .filter(index -> index.getPage().getSite().equals(site))
+                    .collect(Collectors.toList());
+
+            int batchSize = 1500;
+            List<List<Index>> batches = partitionList(indexesToSave, batchSize);
+
+            ForkJoinPool customThreadPool = new ForkJoinPool(Runtime.getRuntime().availableProcessors());
+            try {
+                customThreadPool.submit(() ->
+                        batches.parallelStream().forEach(batch -> {
+                            indexRepository.saveAll(batch);
+                            indexRepository.flush();
+                        })
+                ).get();
+            } catch (Exception e) {
+                System.out.println(" Ошибка при сохранении индексов:" + e.getMessage());
+            } finally {
+                customThreadPool.shutdown();
+            }
+
+            try {
+                allIndex.values().removeIf(index -> index.getPage().getSite().equals(site));
+            } catch (Exception e) {
+                System.out.println(" Ошибка при удалении индексов:" + e.getMessage());
+            }
+
+            System.out.println("Индексы сайта " + site.getName() + " сохранены");
+        } catch (Exception e) {
+            System.out.println(" Ошибка при сохранении индексов:" + e.getMessage());
+        }
+
+
+    }
+
+    // Вспомогательный метод для разбиения на батчи
+    public static <T> List<List<T>> partitionList(List<T> list, int batchSize) {
+        return IntStream.range(0, (list.size() + batchSize - 1) / batchSize)
+                .mapToObj(i -> list.subList(i * batchSize, Math.min((i + 1) * batchSize, list.size())))
+                .collect(Collectors.toList());
+    }
 }

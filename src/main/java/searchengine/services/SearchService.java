@@ -4,37 +4,39 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import searchengine.classesError.RestException;
+import searchengine.enums.STATUS;
+import searchengine.exception.RestException;
 import searchengine.dto.search.SearchData;
 import searchengine.dto.search.SearchResponse;
 import searchengine.model.Index;
 import searchengine.model.Lemma;
 import searchengine.model.Page;
 import searchengine.model.Site;
-import searchengine.serviceRepositoryes.IndexService;
-import searchengine.serviceRepositoryes.LemmaService;
-import searchengine.serviceRepositoryes.PageService;
-import searchengine.serviceRepositoryes.SiteService;
-import searchengine.servicesInterface.SearchService;
+import searchengine.repository.IndexRepository;
+import searchengine.repository.PageRepository;
+import searchengine.repository.SiteRepository;
+import searchengine.function.LemmaService;
+
 import java.util.*;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class SearchServiceIml implements SearchService {
+public class SearchService{
 
     @Autowired
-    private SiteService siteService;
+    private SiteRepository siteRepository;
     @Autowired
     private LemmaService lemmaService;
     @Autowired
-    private PageService pageService;
+    private PageRepository pageRepository;
     @Autowired
-    private IndexService indexService;
+    private IndexRepository indexRepository;
 
 
-    @Override
+
     public SearchResponse search(String query, String siteQuery, int offset, int limit) {
         // TODO: implement search
 
@@ -44,12 +46,17 @@ public class SearchServiceIml implements SearchService {
 
         Site site = null;
         if (siteQuery != null) {
-            site = siteService.getSiteByUrl(siteQuery);
-            if (site == null || !siteService.isSiteIndexed(site)) {
+
+            if (siteRepository.existsByUrl(siteQuery)) {
+                site = siteRepository.findByUrl(siteQuery).get();
+            }
+
+            if (site == null || site.getStatus() != STATUS.INDEXED) {
                 throw new RestException(false, "Сайт " + siteQuery + " не проиндексирован", HttpStatus.OK);
             }
+
         } else {
-            if (!siteService.isAnySiteIndexed()) {
+            if (!siteRepository.existsByStatus(STATUS.INDEXED)) {
                 throw new RestException(false, "Нет проиндексированных сайтов", HttpStatus.OK);
 
             }
@@ -113,7 +120,7 @@ public class SearchServiceIml implements SearchService {
 
         List<Lemma> result = new ArrayList<>();
         int totalPages = site != null ?
-                pageService.getPageCountBySite(site) : pageService.getTotalPageCount();
+               getPageCountBySite(site) : getTotalPageCount();
         double exclusionThreshold = 0.8; // Исключаем леммы, встречающиеся на 80%+ страниц
 
 
@@ -122,7 +129,9 @@ public class SearchServiceIml implements SearchService {
         if (site != null) {
             sites.add(site);
         } else {
-            sites = siteService.getAllIndexedSites();
+            if (siteRepository.existsByStatus(STATUS.INDEXED)) {
+                sites = siteRepository.findALLByStatus(STATUS.INDEXED);
+            }
 
         }
         sites.forEach(siteEach -> {
@@ -147,12 +156,12 @@ public class SearchServiceIml implements SearchService {
 
 
         Lemma firstLemma = lemmas.get(0);
-        Set<Page> resultPages = new HashSet<>(pageService.findPagesByLemma(firstLemma));
+        Set<Page> resultPages = new HashSet<>(findPagesByLemma(firstLemma));
 
         // Постепенно сужаем выборку по остальным леммам
         for (int i = 1; i < lemmas.size() && !resultPages.isEmpty(); i++) {
             Lemma currentLemma = lemmas.get(i);
-            Set<Page> currentLemmaPages = new HashSet<>(pageService.findPagesByLemma(currentLemma));
+            Set<Page> currentLemmaPages = new HashSet<>(findPagesByLemma(currentLemma));
             resultPages.retainAll(currentLemmaPages);
         }
 
@@ -169,7 +178,11 @@ public class SearchServiceIml implements SearchService {
         for (Page page : pages) {
             double relevance = 0.0;
             for (Lemma lemma : lemmas) {
-                Index index = indexService.getIndex(page, lemma);
+                Index index = null;
+
+                if (page != null && lemma != null) {
+                      index = indexRepository.findByPageAndLemma(page, lemma);
+                }
                 if (index != null) {
                     relevance += index.getRank();
                 }
@@ -204,7 +217,7 @@ public class SearchServiceIml implements SearchService {
             result.setSite(page.getSite().getUrl());
             result.setSiteName(page.getSite().getName());
             result.setUri(page.getPath());
-            result.setTitle(pageService.getPageTitle(page));
+            result.setTitle(getPageTitle(page));
             result.setSnippet(generateSnippet(page, query));
             result.setRelevance(relevanceMap.get(page));
             results.add(result);
@@ -212,6 +225,8 @@ public class SearchServiceIml implements SearchService {
 
         return results;
     }
+
+
 
 
     private String generateSnippet(Page page, String query) {
@@ -248,5 +263,34 @@ public class SearchServiceIml implements SearchService {
         snippet = snippet.substring(0, snippet.lastIndexOf(' '));
 
         return snippet + "...";
+    }
+
+    public int getPageCountBySite(Site siteUrl) {
+        if (pageRepository.existsBySite(siteUrl)) {
+            return pageRepository.findBySite(siteUrl).size();
+        } else {
+            return 0;
+        }
+    }
+
+    public int getTotalPageCount() {
+        return pageRepository.findAll().size();
+    }
+
+    public HashSet<Page> findPagesByLemma(Lemma firstLemma) {
+        return new HashSet<>(pageRepository.findAllPageByLemma(firstLemma));
+    }
+
+    public String getPageTitle(Page page) {
+
+        if (page.getContent() == null) {
+            return "Без заголовка";
+        }
+        Pattern pattern = Pattern.compile("<title>(.*?)</title>", Pattern.CASE_INSENSITIVE);
+        Matcher matcher = pattern.matcher(page.getContent());
+        if (matcher.find()) {
+            return matcher.group(1).trim();
+        }
+        return "Без заголовка";
     }
 }

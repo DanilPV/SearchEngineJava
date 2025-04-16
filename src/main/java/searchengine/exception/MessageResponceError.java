@@ -1,4 +1,4 @@
-package searchengine.classesError;
+package searchengine.exception;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

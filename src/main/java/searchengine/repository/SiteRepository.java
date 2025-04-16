@@ -10,10 +10,8 @@ import java.util.Optional;
 @Repository
 public interface SiteRepository extends JpaRepository<Site, Integer> {
 
-    // Метод для поиска сайта по названию
     Optional<Site> findByName(String name);
 
-    // Метод для проверки существования сайта по названию
     boolean existsByName(String name);
 
     boolean existsByStatus(STATUS status);

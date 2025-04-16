@@ -9,9 +9,6 @@ import searchengine.model.Page;
 @Repository
 public interface IndexRepository  extends JpaRepository<Index, Integer> {
 
-
     Index findByPageAndLemma(Page page, Lemma lemma);
-
-
 
 }

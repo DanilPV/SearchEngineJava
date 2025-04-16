@@ -7,7 +7,7 @@ spring:
   datasource:
     username: root
     password: password
-    url: jdbc:mysql://localhost:8003/search_engine?useSSL=false&requireSSL=false&allowPublicKeyRetrieval=true
+    url: jdbc:postgresql://localhost:5430/search_engine?stringtype=unspecified
     # Настройки HikariCP
     #maximum-pool-size=20 — максимальное количество соединений в пуле.
     #minimum-idle=10 — минимальное количество простаивающих соединений.
@@ -20,15 +20,19 @@ spring:
     hikari.max-lifetime: 1800000
     hikari.connection-timeout: 60000
   jpa:
-    #properties:
+    properties:
+      hibernate:
+        type:
+          allow_enum_type_matches: true
+          temp:
+          use_jdbc_metadata_defaults: false
     #  hibernate:
-       # dialect: org.hibernate.dialect.MySQL8Dialect
     hibernate:
       jdbc:
         batch_size: 50
         order_inserts: true
         order_updates: true
-      ddl-auto: none
+      ddl-auto: validate
     show-sql: false
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.xml
