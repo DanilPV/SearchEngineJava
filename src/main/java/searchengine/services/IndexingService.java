@@ -12,9 +12,8 @@ import searchengine.config.SitesListConfig;
 import searchengine.dto.startIndexing.StartIndexingResponce;
 import searchengine.dto.stopIndexing.StopIndexingResponce;
 import searchengine.enums.StatusIndexing;
-import searchengine.function.LemmaService;
+import searchengine.function.AddLemmaAndIndex;
 import searchengine.function.WebCrawler;
-import searchengine.model.Page;
 import searchengine.model.Site;
 import searchengine.repository.PageRepository;
 import searchengine.repository.SiteRepository;
@@ -44,7 +43,7 @@ public class IndexingService {
     private PageRepository pageRepository;
 
     @Autowired
-    private LemmaService lemmaService;
+    private AddLemmaAndIndex lemmaService;
 
     private final ApplicationContext context;
 
@@ -105,7 +104,7 @@ public class IndexingService {
     }
 
 
-    public StatusIndexing formingIndexing( SitesListConfig sites, String startPage) {
+    public void formingIndexing( SitesListConfig sites, String startPage) {
 
 
             List<Site> sitesStart = new ArrayList<>();
@@ -129,18 +128,14 @@ public class IndexingService {
 
             }
 
-        return startIndexingProcess(sitesStart,  startPage);
+         startIndexingProcess(sitesStart,  startPage);
     }
 
 
 
-    public StatusIndexing startIndexingProcess(List<Site> siteList,  String startPage) {
+    public void startIndexingProcess(List<Site> siteList,  String startPage) {
         System.out.println("Старт индексации");
         long startTime = System.currentTimeMillis();
-
-
-
-
 
         CountDownLatch latch = new CountDownLatch(siteList.size());
         List<Thread> tasks = new ArrayList<>();
@@ -149,7 +144,6 @@ public class IndexingService {
 
             int finalDepth;
             String finalStartURL;
-
             if (startPage == null) {
                 finalStartURL = site.getUrl();
                 finalDepth = 2;
@@ -167,24 +161,18 @@ public class IndexingService {
                 crawler.invoke();
 
 
-                lemmaService.saveAllLemmaSite(crawler.getSite());
-
+                lemmaService.saveAllLemmaToBD(crawler.getSite());
                 System.out.println("Сканирование сайта " + site.getName() + " завершено");
 
                 if (isIndexing == StatusIndexing.INDEXING && site.getLastError() == null) {
-
                     site.setStatus(STATUS.INDEXED);
-
                 }
                 else
                 {
 
                     site.setStatus(STATUS.FAILED);
-
                     if (isIndexing == StatusIndexing.INTERRUPTION) {
-
                         site.setLastError(StatusIndexing.INTERRUPTION.toString());
-
                     }
 
                 }
@@ -194,9 +182,8 @@ public class IndexingService {
 
                 if (!siteRepository.existsByStatus(STATUS.INDEXING)) {
 
-                    long endTime = System.currentTimeMillis();
-                    long duration = endTime - startTime;
-                    System.out.println("Конец индексации за " + duration / 1000 + " секунд");
+                    long duration = (System.currentTimeMillis() - startTime) / 1000;
+                    System.out.println("Конец индексации за " + duration + " секунд");
                     isIndexing = StatusIndexing.STOP;
 
                 }
@@ -207,7 +194,7 @@ public class IndexingService {
         }
         isIndexing = StatusIndexing.INDEXING;
         tasks.forEach(Thread::start);
-        return isIndexing;
+
     }
 
 

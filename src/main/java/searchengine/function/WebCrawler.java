@@ -47,7 +47,7 @@ public class WebCrawler extends RecursiveAction {
     private SiteRepository siteRepository;
 
     @Autowired
-    private LemmaService lemmaService;
+    private AddLemmaAndIndex addLemmaAndIndex;
 
     @Autowired
     private PageRepository pageRepository;
@@ -172,18 +172,13 @@ public class WebCrawler extends RecursiveAction {
 
     public void startLemmas(String text, Page page) throws InterruptedException {
 
-        String finalText = text;
         Thread thread = new Thread(() -> {
             try {
 
-
-
-                TreeMap<String, Integer> lemaList = lemmaService.extractLemmasFromString(finalText);
-
-                lemmaService.addAllLemma(lemaList, page);
+                TreeMap<String, Integer> lemaList = addLemmaAndIndex.extractLemmasFromString(text);
+                addLemmaAndIndex.addAllLemma(lemaList, page);
 
             } catch (IOException e) {
-                System.out.println(e.getMessage());
                 throw new RuntimeException(e);
             }
         });

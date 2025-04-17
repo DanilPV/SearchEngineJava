@@ -13,9 +13,10 @@ import searchengine.model.Lemma;
 import searchengine.model.Page;
 import searchengine.model.Site;
 import searchengine.repository.IndexRepository;
+import searchengine.repository.LemmaRepository;
 import searchengine.repository.PageRepository;
 import searchengine.repository.SiteRepository;
-import searchengine.function.LemmaService;
+import searchengine.function.AddLemmaAndIndex;
 
 import java.util.*;
 import java.util.regex.Matcher;
@@ -29,11 +30,14 @@ public class SearchService{
     @Autowired
     private SiteRepository siteRepository;
     @Autowired
-    private LemmaService lemmaService;
+    private AddLemmaAndIndex lemmaService;
     @Autowired
     private PageRepository pageRepository;
     @Autowired
     private IndexRepository indexRepository;
+    @Autowired
+    private LemmaRepository lemmaRepository;
+
 
 
 
@@ -66,8 +70,6 @@ public class SearchService{
         try {
 
             TreeMap<String, Integer> queryLemmas = lemmaService.extractLemmasFromString(query);
-
-
             List<Lemma> filteredLemmas = filterCommonLemmas(queryLemmas, site);
 
             if (filteredLemmas.isEmpty()) {
@@ -76,8 +78,6 @@ public class SearchService{
 
 
             filteredLemmas.sort(Comparator.comparingInt(Lemma::getFrequency));
-
-
             List<Page> foundPages = findPagesContainingAllLemmas(filteredLemmas);
 
             if (foundPages.isEmpty()) {
@@ -87,7 +87,6 @@ public class SearchService{
 
             Map<Page, Double> pageRelevanceMap = calculateRelevance(foundPages, filteredLemmas);
 
-            // Сортируем страницы по релевантности
             List<Page> sortedPages = pageRelevanceMap.entrySet().stream()
                     .sorted(Map.Entry.<Page, Double>comparingByValue().reversed())
                     .map(Map.Entry::getKey)
@@ -121,7 +120,7 @@ public class SearchService{
         List<Lemma> result = new ArrayList<>();
         int totalPages = site != null ?
                getPageCountBySite(site) : getTotalPageCount();
-        double exclusionThreshold = 0.8; // Исключаем леммы, встречающиеся на 80%+ страниц
+        double exclusionThreshold = 0.8;
 
 
         List<Site> sites = new ArrayList<>();
@@ -137,13 +136,16 @@ public class SearchService{
         sites.forEach(siteEach -> {
             for (String lemma : lemmas.keySet()) {
                 System.out.println("Search lemma " + lemma);
-                Lemma lemmaEntity = lemmaService.getLemma(lemma, siteEach);
-                if (lemmaEntity != null) {
+
+                if (lemmaRepository.findByLemmaAndSite(lemma, siteEach) != null) {
+                    Lemma lemmaEntity = lemmaRepository.findByLemmaAndSite(lemma, siteEach);
+
                     double frequencyRatio = (double) lemmaEntity.getFrequency() / totalPages;
                     if (frequencyRatio < exclusionThreshold) {
                         result.add(lemmaEntity);
                     }
                 }
+
             }
 
         });
@@ -158,7 +160,6 @@ public class SearchService{
         Lemma firstLemma = lemmas.get(0);
         Set<Page> resultPages = new HashSet<>(findPagesByLemma(firstLemma));
 
-        // Постепенно сужаем выборку по остальным леммам
         for (int i = 1; i < lemmas.size() && !resultPages.isEmpty(); i++) {
             Lemma currentLemma = lemmas.get(i);
             Set<Page> currentLemmaPages = new HashSet<>(findPagesByLemma(currentLemma));
@@ -174,7 +175,7 @@ public class SearchService{
         Map<Page, Double> absoluteRelevance = new HashMap<>();
         double maxRelevance = 0.0;
 
-        // Рассчитываем абсолютную релевантность для каждой страницы
+
         for (Page page : pages) {
             double relevance = 0.0;
             for (Lemma lemma : lemmas) {
@@ -193,7 +194,7 @@ public class SearchService{
             }
         }
 
-        // Преобразуем в относительную релевантность
+
         if (maxRelevance > 0) {
             for (Map.Entry<Page, Double> entry : absoluteRelevance.entrySet()) {
                 entry.setValue(entry.getValue() / maxRelevance);
@@ -248,17 +249,14 @@ public class SearchService{
             return "";
         }
 
-        // Выбираем область вокруг первого вхождения
+
         int snippetStart = Math.max(0, positions.get(0) - 50);
         int snippetEnd = Math.min(content.length(), positions.get(0) + 150);
         String snippet = content.substring(snippetStart, snippetEnd);
 
-        // Выделяем слова запроса жирным
         for (String word : queryWords) {
             snippet = snippet.replaceAll("(?i)(" + Pattern.quote(word) + ")", "<b>$1</b>");
         }
-
-        // Обрезаем до целых слов
         snippet = snippet.substring(snippet.indexOf(' ') + 1);
         snippet = snippet.substring(0, snippet.lastIndexOf(' '));
 
@@ -283,13 +281,14 @@ public class SearchService{
 
     public String getPageTitle(Page page) {
 
-        if (page.getContent() == null) {
-            return "Без заголовка";
-        }
-        Pattern pattern = Pattern.compile("<title>(.*?)</title>", Pattern.CASE_INSENSITIVE);
-        Matcher matcher = pattern.matcher(page.getContent());
-        if (matcher.find()) {
-            return matcher.group(1).trim();
+        if (page.getContent() != null) {
+
+            Pattern pattern = Pattern.compile("<title>(.*?)</title>", Pattern.CASE_INSENSITIVE);
+            Matcher matcher = pattern.matcher(page.getContent());
+
+            if (matcher.find()) {
+                return matcher.group(1).trim();
+            }
         }
         return "Без заголовка";
     }

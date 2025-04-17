@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 @Service
-public class LemmaService {
+public class AddLemmaAndIndex {
 
     @Autowired
     private LemmaRepository lemmaRepository;
@@ -30,98 +30,7 @@ public class LemmaService {
     private static ConcurrentHashMap<String, Lemma> addLemmas = new ConcurrentHashMap<>();
     public static ConcurrentHashMap<String, Index> allIndex = new ConcurrentHashMap<>();
 
-    public void addAllLemma(TreeMap<String, Integer> lemaList, Page page) {
-
-        List<Lemma> newLemmas = new ArrayList<>();
-        try {
-
-
-            lemaList.forEach((lemmaName, frequency) -> {
-                Lemma lemma;
-                if (lemmaRepository.findByLemmaAndSite(lemmaName, page.getSite()) == null) {
-
-                    lemma = new Lemma();
-                    lemma.setSite(page.getSite());
-                    lemma.setLemma(lemmaName);
-                    newLemmas.add(lemma);
-
-                } else {
-                    lemma = lemmaRepository.findByLemmaAndSite(lemmaName, page.getSite());
-                }
-
-                // Используем составной ключ для уникальности
-                String key = lemmaName + "|" + page.getSite().getId();
-
-                addLemmas.compute(key, (k, existingLemma) -> {
-                    if (existingLemma != null) {
-                        // Лемма уже существует - обновляем частоту
-                        existingLemma.setFrequency(existingLemma.getFrequency() + 1);
-                        return existingLemma;
-                    } else {
-                        // Новая лемма
-                        lemma.setFrequency(1);
-                        return lemma;
-                    }
-                });
-
-                Index index = new Index();
-                index.setPage(page);
-                index.setRank(frequency);
-                index.setLemma(addLemmas.get(key));
-
-                allIndex.put(index.getPage().getPath() + index.getLemma().getLemma(), index);
-            });
-
-        } catch (Exception e) {
-            System.out.println(" Ошибка при сохранении леммы:" + e.getMessage());
-        }
-
-
-    }
-
-    public void saveAllLemmaSite(Site site) {
-
-        List<Lemma> lemmasToSave = addLemmas.values().stream()
-                .filter(lemma -> lemma.getSite().equals(site))
-                .collect(Collectors.toList());
-
-        int batchSize = 1500;
-        List<List<Lemma>> batches = partitionList(lemmasToSave, batchSize);
-
-        ForkJoinPool customThreadPool = new ForkJoinPool(Runtime.getRuntime().availableProcessors());
-
-        try {
-            customThreadPool.submit(() ->
-                    batches.parallelStream().forEach(batch -> {
-                        lemmaRepository.saveAll(batch);
-                        lemmaRepository.flush();
-                    })
-            ).get();
-        } catch (ExecutionException | InterruptedException e) {
-            throw new RuntimeException(e);
-        } finally {
-            customThreadPool.shutdown();
-        }
-
-
-        try {
-            addLemmas.values().removeIf((lemma -> lemma.getSite().equals(site)));
-        } catch (Exception e) {
-            System.out.println(" Ошибка при удалении лемм:" + e.getMessage());
-        }
-
-        System.out.println("Леммы сайта " + site.getName() + " сохранены");
-
-        if (!batches.isEmpty()) {
-
-            saveAllIndexSite(site);
-        }
-
-
-    }
-
-     private static final String[] particlesNames = new String[]{"МЕЖД", "ПРЕДЛ", "СОЮЗ"};
-
+    private static final String[] particlesNames = new String[]{"МЕЖД", "ПРЕДЛ", "СОЮЗ"};
     private boolean hasParticleProperty(String wordBase) {
         for (String property : particlesNames) {
             if (wordBase.toUpperCase().contains(property)) {
@@ -130,7 +39,6 @@ public class LemmaService {
         }
         return false;
     }
-
 
     private boolean anyWordBaseBelongToParticle(List<String> wordBaseForms) {
         return wordBaseForms.stream().anyMatch(this::hasParticleProperty);
@@ -143,7 +51,6 @@ public class LemmaService {
                 .trim()
                 .split("\\s+");
     }
-
 
     public TreeMap<String, Integer> extractLemmasFromString(String text) throws IOException {
 
@@ -178,18 +85,100 @@ public class LemmaService {
     }
 
 
-    public Lemma getLemma(String lemma, Site siteUrl) {
 
-        if (lemmaRepository.findByLemmaAndSite(lemma, siteUrl) != null) {
-            return lemmaRepository.findByLemmaAndSite(lemma, siteUrl);
-        } else {
-            return null;
+    public void addAllLemma(TreeMap<String, Integer> lemaList, Page page) {
+
+        List<Lemma> newLemmas = new ArrayList<>();
+        try {
+
+
+            lemaList.forEach((lemmaName, frequency) -> {
+                Lemma lemma;
+                if (lemmaRepository.findByLemmaAndSite(lemmaName, page.getSite()) == null) {
+
+                    lemma = new Lemma();
+                    lemma.setSite(page.getSite());
+                    lemma.setLemma(lemmaName);
+                    newLemmas.add(lemma);
+
+                } else {
+                    lemma = lemmaRepository.findByLemmaAndSite(lemmaName, page.getSite());
+                }
+
+
+                String key = lemmaName + "|" + page.getSite().getId();
+
+                addLemmas.compute(key, (k, existingLemma) -> {
+                    if (existingLemma != null) {
+                        existingLemma.setFrequency(existingLemma.getFrequency() + 1);
+                        return existingLemma;
+                    } else {
+                        lemma.setFrequency(1);
+                        return lemma;
+                    }
+                });
+
+                Index index = new Index();
+                index.setPage(page);
+                index.setRank(frequency);
+                index.setLemma(addLemmas.get(key));
+
+                allIndex.put(index.getPage().getPath() + index.getLemma().getLemma(), index);
+            });
+
+        } catch (Exception e) {
+            System.out.println(" Ошибка при сохранении лемм:" + e.getMessage());
         }
+
+
+    }
+
+    public void saveAllLemmaToBD(Site site) {
+
+        List<Lemma> lemmasToSave = addLemmas.values().stream()
+                .filter(lemma -> lemma.getSite().equals(site))
+                .collect(Collectors.toList());
+
+        int batchSize = 1500;
+        List<List<Lemma>> batches = partitionList(lemmasToSave, batchSize);
+
+        ForkJoinPool customThreadPool = new ForkJoinPool(Runtime.getRuntime().availableProcessors());
+
+        try {
+            customThreadPool.submit(() ->
+                    batches.parallelStream().forEach(batch -> {
+                        lemmaRepository.saveAll(batch);
+                        lemmaRepository.flush();
+                    })
+            ).get();
+        } catch (ExecutionException | InterruptedException e) {
+            throw new RuntimeException(e);
+        } finally {
+            customThreadPool.shutdown();
+        }
+
+
+        try {
+            addLemmas.values().removeIf((lemma -> lemma.getSite().equals(site)));
+        } catch (Exception e) {
+            System.out.println(" Ошибка при удалении лемм:" + e.getMessage());
+        }
+
+        System.out.println("Леммы сайта " + site.getName() + " сохранены");
+
+        if (!batches.isEmpty()) {
+
+            saveAllIndexToBD(site);
+        }
+
+
     }
 
 
+
+
     @Transactional
-    public void saveAllIndexSite(Site site) {
+    public void saveAllIndexToBD(Site site) {
 
         try {
 
@@ -208,6 +197,7 @@ public class LemmaService {
                             indexRepository.flush();
                         })
                 ).get();
+
             } catch (Exception e) {
                 System.out.println(" Ошибка при сохранении индексов:" + e.getMessage());
             } finally {
@@ -228,7 +218,7 @@ public class LemmaService {
 
     }
 
-    // Вспомогательный метод для разбиения на батчи
+
     public static <T> List<List<T>> partitionList(List<T> list, int batchSize) {
         return IntStream.range(0, (list.size() + batchSize - 1) / batchSize)
                 .mapToObj(i -> list.subList(i * batchSize, Math.min((i + 1) * batchSize, list.size())))
