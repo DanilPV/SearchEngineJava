@@ -6,14 +6,14 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import searchengine.config.SiteConfig;
-import searchengine.enums.STATUS;
+import searchengine.enums.Status;
 import searchengine.exception.RestException;
 import searchengine.config.SitesListConfig;
 import searchengine.dto.startIndexing.StartIndexingResponce;
 import searchengine.dto.stopIndexing.StopIndexingResponce;
 import searchengine.enums.StatusIndexing;
-import searchengine.function.AddLemmaAndIndex;
-import searchengine.function.WebCrawler;
+import searchengine.util.AddLemmaAndIndex;
+import searchengine.util.WebCrawler;
 import searchengine.model.Site;
 import searchengine.repository.PageRepository;
 import searchengine.repository.SiteRepository;
@@ -36,14 +36,9 @@ public class IndexingService {
 
     private final SitesListConfig sites;
 
-    @Autowired
-    private SiteRepository siteRepository;
-
-    @Autowired
-    private PageRepository pageRepository;
-
-    @Autowired
-    private AddLemmaAndIndex lemmaService;
+    private final SiteRepository siteRepository;
+    private final PageRepository pageRepository;
+    private final AddLemmaAndIndex lemmaService;
 
     private final ApplicationContext context;
 
@@ -104,36 +99,35 @@ public class IndexingService {
     }
 
 
-    public void formingIndexing( SitesListConfig sites, String startPage) {
+    public void formingIndexing(SitesListConfig sites, String startPage) {
 
 
-            List<Site> sitesStart = new ArrayList<>();
+        List<Site> sitesStart = new ArrayList<>();
 
-            for (SiteConfig siteIndeging : sites.getSites()) {
-
-                Site site;
-                if (siteRepository.existsByName(siteIndeging.getName())) {
-                    site = siteRepository.findByName(siteIndeging.getName()).orElse(null);
-                } else {
-                    site = new Site();
-                    site.setName(siteIndeging.getName());
-                    site.setUrl(siteIndeging.getUrl());
-                }
-                site.setStatus(STATUS.INDEXING);
-                site.setStatusTime(LocalDateTime.now());
+        for (SiteConfig siteIndeging : sites.getSites()) {
 
 
-                siteRepository.save(site);
-                sitesStart.add(site);
+            Site site ;
+            site = siteRepository.findByUrl(siteIndeging.getUrl())
+                        .orElseGet(() -> {
+                            Site newSite = new Site();
+                            newSite.setName(siteIndeging.getName());
+                            newSite.setUrl(extractDomainName(siteIndeging.getUrl()));
+                            return newSite;
+                        });
+            site.setStatus(Status.INDEXING);
+            site.setStatusTime(LocalDateTime.now());
 
-            }
+            siteRepository.save(site);
+            sitesStart.add(site);
 
-         startIndexingProcess(sitesStart,  startPage);
+        }
+
+        startIndexingProcess(sitesStart, startPage);
     }
 
 
-
-    public void startIndexingProcess(List<Site> siteList,  String startPage) {
+    public void startIndexingProcess(List<Site> siteList, String startPage) {
         System.out.println("Старт индексации");
         long startTime = System.currentTimeMillis();
 
@@ -165,14 +159,12 @@ public class IndexingService {
                 System.out.println("Сканирование сайта " + site.getName() + " завершено");
 
                 if (isIndexing == StatusIndexing.INDEXING && site.getLastError() == null) {
-                    site.setStatus(STATUS.INDEXED);
-                }
-                else
-                {
+                    site.setStatus(Status.INDEXED);
+                } else {
 
-                    site.setStatus(STATUS.FAILED);
+                    site.setStatus(Status.FAILED);
                     if (isIndexing == StatusIndexing.INTERRUPTION) {
-                        site.setLastError(StatusIndexing.INTERRUPTION.toString());
+                        site.setLastError("Индексация остановлена пользователем");
                     }
 
                 }
@@ -180,7 +172,7 @@ public class IndexingService {
                 site.setStatusTime(LocalDateTime.now());
                 siteRepository.save(site);
 
-                if (!siteRepository.existsByStatus(STATUS.INDEXING)) {
+                if (!siteRepository.existsByStatus(Status.INDEXING)) {
 
                     long duration = (System.currentTimeMillis() - startTime) / 1000;
                     System.out.println("Конец индексации за " + duration + " секунд");
@@ -196,7 +188,6 @@ public class IndexingService {
         tasks.forEach(Thread::start);
 
     }
-
 
 
     public StopIndexingResponce stopIndexing() {
@@ -222,8 +213,12 @@ public class IndexingService {
                 return null;
             }
             int endIndex = url.indexOf(domain);
-            
-            domain = url.substring(0, endIndex) + domain;
+
+            String prefix ="";
+            if(!domain.startsWith("www.")) {
+                prefix ="www." ;
+            }
+            domain = url.substring(0, endIndex) + prefix + domain;
 
             return domain;
         } catch (URISyntaxException e) {

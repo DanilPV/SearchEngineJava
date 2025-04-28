@@ -7,11 +7,7 @@ import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 
 
-import org.hibernate.annotations.JdbcType;
-import org.hibernate.annotations.Type;
-import org.hibernate.dialect.PostgreSQLEnumJdbcType;
-import org.springframework.stereotype.Component;
-import searchengine.enums.STATUS;
+import searchengine.enums.Status;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
@@ -30,7 +26,7 @@ public class Site implements Comparable<Site> {
     private Integer id;
 
     @Enumerated(EnumType.STRING)
-    private STATUS status;
+    private Status status;
 
     @CreationTimestamp
     @Column(name = "status_time")
@@ -47,13 +43,6 @@ public class Site implements Comparable<Site> {
 
     @OneToMany(mappedBy = "site", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Page> pages;
-
-//    @Transient
-//    private boolean scanLemmas;
-
-   // @Transient
-   // private String mainURL;
-
 
     @Override
     public int compareTo(Site other) {

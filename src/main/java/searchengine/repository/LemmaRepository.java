@@ -1,6 +1,5 @@
 package searchengine.repository;
 
-import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -13,11 +12,14 @@ import java.util.Optional;
 @Repository
 public interface LemmaRepository  extends JpaRepository<Lemma, Integer> {
 
-    @Transactional
     @Query("SELECT l FROM Lemma l WHERE l.lemma = :lemma AND l.site = :site")
     Lemma findByLemmaAndSite(@Param("lemma") String lemma, @Param("site") Site site);
 
     List<Lemma> findAllLemmaBySite(Optional<Site> byUrl);
 
     boolean existsBySiteUrl(String url);
+
+
+    Lemma findByLemma(String originalWord);
+
 }

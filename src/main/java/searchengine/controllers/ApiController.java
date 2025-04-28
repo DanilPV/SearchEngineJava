@@ -20,21 +20,19 @@ public class ApiController {
     private final SearchService searchService;
 
 
-
-
     @GetMapping("/statistics")
-    public StatisticsResponse  statistics() {
+    public StatisticsResponse statistics() {
         return statisticsService.getStatistics();
     }
 
     @GetMapping("/startIndexing")
     public StartIndexingResponce startIndexing() {
-        return  startStopIndexingService.preIndexing(null);
+        return startStopIndexingService.preIndexing(null);
     }
+
     @PostMapping("/indexPage")
-    public StartIndexingResponce indexPage(@RequestBody String url)   {
-       // return  indexPageService.indexPage(url) ;
-        return  startStopIndexingService.preIndexing(url);
+    public StartIndexingResponce indexPage(@RequestBody String url) {
+        return startStopIndexingService.preIndexing(url);
     }
 
 
@@ -45,13 +43,13 @@ public class ApiController {
 
 
     @GetMapping("/search{query}{site}{offset}{limit}")
-    public SearchResponse search (
+    public SearchResponse search(
             @RequestParam(required = false) String query,
             @RequestParam(required = false) String site,
             @RequestParam(defaultValue = "0") int offset,
             @RequestParam(defaultValue = "20") int limit) {
 
-        return  searchService.search(query,site,offset,limit) ;
+        return searchService.search(query, site, offset, limit);
 
     }
 

@@ -25,12 +25,11 @@ public class StatisticsService {
 
 
     private final SitesListConfig sites;
-    @Autowired
+
     private final PageRepository pageRepository;
-    @Autowired
-    private LemmaRepository lemmaRepository;
-    @Autowired
-    private SiteRepository siteRepository;
+    private final LemmaRepository lemmaRepository;
+    private final SiteRepository siteRepository;
+    private final IndexingService indexingService;
 
     public StatisticsResponse getStatistics() {
 
@@ -47,24 +46,24 @@ public class StatisticsService {
             SiteConfig site = sitesList.get(i);
             DetailedStatisticsItem item = new DetailedStatisticsItem();
             item.setName(site.getName());
-            item.setUrl(site.getUrl());
+            item.setUrl(IndexingService.extractDomainName(site.getUrl()));
 
             int pages = 0;
-            if ( pageRepository.existsBySiteUrl(site.getUrl()) ){
+            if (pageRepository.existsBySiteUrl(item.getUrl())) {
                 pages = pageRepository.findAllPageBySite(
                         siteRepository.findByUrl(
-                                site.getUrl()
+                                item.getUrl()
                         ).get()
                 ).size();
             }
 
             int lemmas = 0;
-            if ( lemmaRepository.existsBySiteUrl(site.getUrl()) ){
+            if (lemmaRepository.existsBySiteUrl(item.getUrl())) {
                 lemmas = lemmaRepository.findAllLemmaBySite(
-                    siteRepository.findByUrl(
-                            site.getUrl()
-                    )
-            ).size();
+                        siteRepository.findByUrl(
+                                item.getUrl()
+                        )
+                ).size();
             }
 
 
@@ -73,15 +72,15 @@ public class StatisticsService {
             ZoneId zoneId = ZoneId.systemDefault();
             long time;
 
-            if (siteRepository.existsByUrl( site.getUrl() ) ) {
+            if (siteRepository.findByUrl(item.getUrl()).isPresent()) {
 
-                Site siteQuery = siteRepository.findByUrl(site.getUrl()).get();
+                Site siteQuery = siteRepository.findByUrl(item.getUrl()).get();
                 item.setStatus(siteQuery.getStatus().toString());
                 item.setError(siteQuery.getLastError());
 
 
                 time = siteQuery.getStatusTime().atZone(zoneId).toEpochSecond() * 1000;
-                item.setStatusTime( time);
+                item.setStatusTime(time);
 
             } else {
                 item.setStatus("NOT_INDEXED");
@@ -89,7 +88,7 @@ public class StatisticsService {
                 time = LocalDateTime.now().atZone(zoneId).toEpochSecond() * 1000;
             }
 
-            item.setStatusTime( time);
+            item.setStatusTime(time);
             total.setPages(total.getPages() + pages);
             total.setLemmas(total.getLemmas() + lemmas);
             detailed.add(item);

@@ -29,4 +29,7 @@ public interface PageRepository  extends JpaRepository<Page, Integer> {
     List<Page> findAllPageBySite(Site  byUrl);
 
     boolean existsBySiteUrl(String url);
+
+    @Query("SELECT l.page FROM Index l, Lemma l1 WHERE l.lemma =l1 AND l1.lemma =:lemmaName ")
+    List<Page> findAllPageByLemmaName(String lemmaName);
 }
