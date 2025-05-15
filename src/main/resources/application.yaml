@@ -1,0 +1,50 @@
+server:
+  port: 8086
+app:
+  userAgent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.90 Safari/537.36
+  referrer: https://www.google.com/
+spring:
+  datasource:
+    username: root
+    password: password
+    url: jdbc:postgresql://localhost:5430/search_engine?stringtype=unspecified
+    # Настройки HikariCP
+    #maximum-pool-size=20 — максимальное количество соединений в пуле.
+    #minimum-idle=10 — минимальное количество простаивающих соединений.
+    #idle-timeout=30000 — время (в миллисекундах), через которое неиспользуемое соединение будет закрыто.
+    #max-lifetime=1800000 — максимальное время жизни соединения (в миллисекундах).
+    #connection-timeout=30000 — время ожидания соединения (в миллисекундах).
+    hikari.maximum-pool-size: 150
+    hikari.minimum-idle: 5
+    hikari.idle-timeout: 60000
+    hikari.max-lifetime: 1800000
+    hikari.connection-timeout: 60000
+  jpa:
+    properties:
+      hibernate:
+        type:
+          allow_enum_type_matches: true
+          temp:
+          use_jdbc_metadata_defaults: false
+    #  hibernate:
+    hibernate:
+      jdbc:
+        batch_size: 50
+        order_inserts: true
+        order_updates: true
+      ddl-auto: validate
+    show-sql: false
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.xml
+    enabled: true
+    drop-first: false
+indexing-settings:
+  sites:
+#    - url: https://www.lenta.ru
+#      name: Лента.ру
+    - url: https://www.playback.ru
+      name: PlayBack.Ru
+    - url: https://www.skillbox.ru
+      name: Skillbox
+    - url: https://xn----ptbeeoanls4c0b.xn--p1ai
+      name: король-суши.рф

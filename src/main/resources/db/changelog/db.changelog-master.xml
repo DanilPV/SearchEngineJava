@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
+    <changeSet id="create_enum_site_status" author="PDV">
+        <sql>
+            CREATE TYPE site_status AS ENUM ('INDEXING', 'INDEXED', 'FAILED');
+
+        </sql>
+    </changeSet>
+    <changeSet id="createSiteTable" author="PDV">
+        <createTable tableName="site">
+            <column name="id" type="serial" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="status" type="site_status">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status_time" type="timestamp(6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_error" type="text">
+                <constraints nullable="true"/>
+            </column>
+            <column name="url" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="name" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+    </changeSet>
+
+    <changeSet id="replaceEnum" author="PDV">
+        <sql>ALTER TABLE site ALTER COLUMN status TYPE site_status USING status::site_status;</sql>
+    </changeSet>
+
+
+     <changeSet id="createIndexTable" author="PDV">
+        <createTable tableName="index">
+            <column name="id" type="serial" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="page_id" type="integer">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lemma_id" type="integer">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rank" type="float">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+
+
+
+    <changeSet id="createLemmaTable" author="PDV">
+        <createTable tableName="lemma">
+            <column name="id" type="serial" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="site_id" type="integer">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lemma" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="frequency" type="integer">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addUniqueConstraint
+                tableName="lemma"
+                columnNames="lemma, site_id"
+                constraintName="unique_lemma_site"/>
+        </changeSet>
+
+        <changeSet id="addForeignKeyLemmaToSite" author="PDV">
+             <addForeignKeyConstraint
+                    baseTableName="lemma"
+                    baseColumnNames="site_id"
+                    constraintName="fk_lemma_site"
+                    referencedTableName="site"
+                    referencedColumnNames="id"
+                    onDelete="CASCADE"/>
+        </changeSet>
+
+    <changeSet id="createPageTable" author="PDV">
+        <createTable tableName="page">
+            <column name="id" type="serial" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="site_id" type="integer">
+                <constraints nullable="false"/>
+            </column>
+            <column name="path" type="varchar(700)">
+                <constraints  nullable="false"/>
+            </column>
+            <column name="code" type="integer">
+                <constraints nullable="false"/>
+            </column>
+            <column name="content" type="MEDIUMTEXT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <createIndex indexName="idx_page_path"
+                     tableName="page">
+            <column name="path" type="varchar(700)"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="addForeignKeyIndexToPage" author="PDV">
+        <addForeignKeyConstraint
+                baseTableName="index"
+                baseColumnNames="page_id"
+                constraintName="fk_index_page"
+                referencedTableName="page"
+                referencedColumnNames="id"
+                onDelete="CASCADE"/>
+    </changeSet>
+    <changeSet id="addForeignKeyPageToSite" author="PDV">
+        <addForeignKeyConstraint
+                baseTableName="page"
+                baseColumnNames="site_id"
+                constraintName="fk_page_site"
+                referencedTableName="site"
+                referencedColumnNames="id"
+                onDelete="CASCADE"/>
+    </changeSet>
+
+
+</databaseChangeLog>
