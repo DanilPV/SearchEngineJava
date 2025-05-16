@@ -90,7 +90,7 @@ public class SearchService {
                     sortedPages, pageRelevanceMap, query, offset, limit);
 
             SearchResponse response = new SearchResponse();
-            response.setCount(data.size());
+            response.setCount(sortedPages.size());
             response.setData(data);
             response.setResult(true);
 
