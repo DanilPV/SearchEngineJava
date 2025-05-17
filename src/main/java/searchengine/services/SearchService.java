@@ -198,7 +198,7 @@ public class SearchService {
             Page page = pages.get(i);
             SearchData result = new SearchData();
             result.setSite(page.getSite().getUrl());
-            result.setSiteName(page.getSite().getName());
+            result.setSiteName("Ver(17.05.2025) - " + page.getSite().getName());
             result.setUri(page.getPath());
             result.setTitle(getPageTitle(page));
             result.setSnippet(generateSnippet(page, query));
